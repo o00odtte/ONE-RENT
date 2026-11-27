@@ -1,3 +1,7 @@
+
+ <!-- DOKUMENTASI PROYEK: deskripsi, tujuan, fitur, dan informasi penggunaan aplikasi ONE RENT. -->
+
+
 # SISTEM PENGELOLAAN PENYEWAAN MOBIL PADA RENTAL MOBIL
 
 ## Deskripsi Proyek
@@ -47,6 +51,25 @@ Untuk menjalankan aplikasi ONE RENT pada lingkungan lokal, langkah-langkah yang 
 ## Ruang Lingkup Sistem
 
 ONE RENT dikembangkan sebagai aplikasi berbasis web yang digunakan khusus oleh admin rental mobil. Sistem ini berfokus pada pengelolaan administrasi penyewaan kendaraan dan tidak mencakup layanan pemesanan mandiri oleh pelanggan, aplikasi mobile, maupun integrasi payment gateway.
+
+## Tahapan Pengembangan
+
+Pengembangan ONE RENT dilakukan secara bertahap untuk memastikan sistem dapat dibangun dan disempurnakan sesuai kebutuhan pengelolaan rental mobil.
+
+### Milestone 1 – Perancangan dan Pembangunan Awal Sistem
+
+Tahap awal berfokus pada perancangan struktur aplikasi, pembuatan antarmuka, serta pembangunan fitur-fitur utama untuk mendukung proses pengelolaan rental mobil.
+
+### Milestone 2 – Pengembangan dan Penyempurnaan Sistem
+
+Pada tahap kedua, pengembangan difokuskan pada penyempurnaan fungsi sistem dan pengelolaan data agar proses operasional rental mobil dapat berjalan lebih terstruktur. Kegiatan pada tahap ini meliputi:
+
+- Penyempurnaan fitur pengelolaan data mobil dan pelanggan.
+- Pengembangan proses reservasi dan transaksi penyewaan.
+- Penyempurnaan pengelolaan pembayaran, pengembalian, dan denda.
+- Penyesuaian validasi input dan proses pengolahan data.
+- Perbaikan serta penyesuaian antarmuka agar penggunaan sistem lebih konsisten.
+- Penyesuaian struktur database dengan kebutuhan fitur aplikasi.
 
 ## Status Pengembangan
 
