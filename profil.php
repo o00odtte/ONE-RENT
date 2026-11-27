@@ -1,4 +1,5 @@
 <?php
+// PROFIL ADMIN: mengambil data akun serta memproses perubahan nama dan password admin.
 require_once 'module_helper.php';
 $adminId = $_SESSION['id_admin'];
 $admin = oneParam($conn,'SELECT id_admin,nama_admin,username,password FROM admin WHERE id_admin=?','s',[$adminId]);

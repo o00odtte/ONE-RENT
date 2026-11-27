@@ -1,5 +1,6 @@
-
 <?php
+// HALAMAN LOGIN: menangani autentikasi admin serta menampilkan form masuk/pendaftaran.
+
 session_start();
 require_once 'koneksi.php';
 
@@ -224,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -243,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         body {
-            font-family: 'Manrope', sans-serif;
+            font-family: 'Outfit', sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;

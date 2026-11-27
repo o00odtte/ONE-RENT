@@ -1,3 +1,5 @@
+<!-- DOKUMENTASI PROYEK: deskripsi, tujuan, fitur, dan informasi penggunaan aplikasi ONE RENT. -->
+
 # SISTEM PENGELOLAAN PENYEWAAN MOBIL PADA RENTAL MOBIL
 
 ## Deskripsi Proyek

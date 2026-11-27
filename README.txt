@@ -1,3 +1,5 @@
+# PANDUAN PROYEK: daftar file utama, persiapan instalasi, dan cara menjalankan aplikasi ONE RENT.
+
 ONE RENT - Aplikasi Admin Rental Mobil
 
 ISI FOLDER

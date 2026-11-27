@@ -1,14 +1,15 @@
 <?php
+// MODUL DATA MOBIL: validasi, tambah, edit, hapus, pencarian, dan tampilan data kendaraan.
 require_once 'auth.php';
 require_once 'koneksi.php';
 date_default_timezone_set('Asia/Jakarta');
 
-// Fungsi untuk mengamankan output HTML
+// Mengamankan output HTML
 function e($data) {
     return htmlspecialchars($data ?? "", ENT_QUOTES, "UTF-8");
 }
 
-// Fungsi validasi dan format nomor polisi
+// Memeriksa dan memformat nomor polisi
 function formatPlat($plat) {
     $plat = strtoupper(preg_replace('/\s+/', '', trim($plat)));
 
@@ -19,7 +20,7 @@ function formatPlat($plat) {
     return $hasil[1] . " " . $hasil[2] . " " . $hasil[3];
 }
 
-// Fungsi validasi kapasitas kursi
+// Memeriksa kapasitas kursi
 function formatSeat($seat) {
     $seat = trim($seat);
 
@@ -30,45 +31,79 @@ function formatSeat($seat) {
     return preg_replace('/^([0-9]+)\s+seat$/i', '$1 Seat', $seat);
 }
 
+// Mengambil dan memvalidasi data mobil dari form
+function ambilDataMobil($post) {
+    $merk = trim($post['merk_mobil'] ?? '');
+    $plat = formatPlat($post['plat_kendaraan'] ?? '');
+    $seat = formatSeat($post['seat_row'] ?? '');
+
+    $tarifRaw = trim((string)($post['tarif_sewa'] ?? ''));
+    $tarif = is_numeric($tarifRaw) ? (float)$tarifRaw : 0;
+
+    $status = $post['status_mobil'] ?? '';
+
+    if (!in_array($status, ['Tersedia', 'Perawatan'], true)) {
+        $status = false;
+    }
+
+    // Memeriksa semua input
+    if (
+        $merk === '' ||
+        mb_strlen($merk) > 30 ||
+        $plat === false ||
+        strlen($plat) > 10 ||
+        $seat === false ||
+        $tarifRaw === '' ||
+        !is_finite($tarif) ||
+        $tarif <= 0 ||
+        $tarif > 99999999.99 ||
+        $status === false
+    ) {
+        return false;
+    }
+
+    return [
+        'merk' => $merk,
+        'plat' => $plat,
+        'seat' => $seat,
+        'tarif' => $tarif,
+        'status' => $status
+    ];
+}
+
 $pesan = "";
 $error = "";
 
-
+$isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
+// ==============================
 // PROSES TAMBAH MOBIL
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["tambah_mobil"])) {
+// ==============================
+if ($isPost && isset($_POST['tambah_mobil'])) {
 
-    $merk = trim($_POST["merk_mobil"] ?? '');
-    $plat = formatPlat($_POST["plat_kendaraan"] ?? '');
-    $seat = formatSeat($_POST["seat_row"] ?? '');
-    $tarifRaw = trim((string)($_POST["tarif_sewa"] ?? ''));
-    $tarif = is_numeric($tarifRaw) ? (float)$tarifRaw : 0;
-    $status = $_POST["status_mobil"] ?? '';
-    if (!in_array($status, ["Tersedia", "Perawatan"], true)) {
-        $status = false;
-    }
-    if ($merk === "" || mb_strlen($merk) > 30 || $plat === false || strlen($plat) > 10 || $seat === false || $tarifRaw === '' || !is_finite($tarif) || $tarif <= 0 || $tarif > 99999999.99 || $status === false) {
+    $data = ambilDataMobil($_POST);
 
+    if ($data === false) {
         $error = "Data belum lengkap atau format input tidak valid.";
-
     } else {
 
-        // Cek nomor polisi yang sudah terdaftar
-        $cekPlat = mysqli_prepare($conn, "
-            SELECT id_mobil FROM mobil
-            WHERE plat_kendaraan = ?
-        ");
+        // Memeriksa nomor polisi
+        $cekPlat = mysqli_prepare($conn,
+            "SELECT id_mobil FROM mobil WHERE plat_kendaraan = ?"
+        );
 
-        mysqli_stmt_bind_param($cekPlat, "s", $plat);
+        mysqli_stmt_bind_param($cekPlat, "s", $data['plat']);
         mysqli_stmt_execute($cekPlat);
+
         $hasilCek = mysqli_stmt_get_result($cekPlat);
+        $platTerdaftar = mysqli_num_rows($hasilCek) > 0;
 
-        if (mysqli_num_rows($hasilCek) > 0) {
+        mysqli_stmt_close($cekPlat);
 
+        if ($platTerdaftar) {
             $error = "Nomor polisi sudah terdaftar! Gunakan nomor lain.";
-
         } else {
 
-            // Membuat ID otomatis MBL001, MBL002, dan seterusnya
+            // Membuat ID mobil otomatis
             $queryID = mysqli_query($conn, "
                 SELECT MAX(CAST(SUBSTRING(id_mobil, 4) AS UNSIGNED)) AS nomor
                 FROM mobil
@@ -76,9 +111,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["tambah_mobil"])) {
             ");
 
             $hasilID = mysqli_fetch_assoc($queryID);
-            $nomorBaru = (int) ($hasilID["nomor"] ?? 0) + 1;
+            $nomorBaru = (int)($hasilID['nomor'] ?? 0) + 1;
             $idMobil = "MBL" . str_pad($nomorBaru, 3, "0", STR_PAD_LEFT);
 
+            // Menyimpan data mobil
             $stmt = mysqli_prepare($conn, "
                 INSERT INTO mobil
                 (id_mobil, plat_kendaraan, merk_mobil, seat_row, status_mobil, tarif_sewa)
@@ -89,11 +125,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["tambah_mobil"])) {
                 $stmt,
                 "sssssd",
                 $idMobil,
-                $plat,
-                $merk,
-                $seat,
-                $status,
-                $tarif
+                $data['plat'],
+                $data['merk'],
+                $data['seat'],
+                $data['status'],
+                $data['tarif']
             );
 
             if (mysqli_stmt_execute($stmt)) {
@@ -102,173 +138,201 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["tambah_mobil"])) {
             } else {
                 $error = "Gagal menambahkan data mobil.";
             }
+
+            mysqli_stmt_close($stmt);
         }
     }
 }
-
+// ==============================
 // PROSES HAPUS MOBIL
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["hapus_mobil"])) {
+// ==============================
+if ($isPost && isset($_POST['hapus_mobil'])) {
 
-    $idMobil = trim($_POST["id_mobil"]);
+    $idMobil = trim($_POST['id_mobil'] ?? '');
 
-    if ($idMobil === "") {
+    if ($idMobil === '') {
         $error = "ID mobil tidak valid.";
     } else {
-        $cekMobil = mysqli_prepare($conn, "SELECT id_mobil FROM mobil WHERE id_mobil = ?");
+
+        // Memeriksa keberadaan mobil
+        $cekMobil = mysqli_prepare($conn,
+            "SELECT id_mobil FROM mobil WHERE id_mobil = ?"
+        );
+
         mysqli_stmt_bind_param($cekMobil, "s", $idMobil);
         mysqli_stmt_execute($cekMobil);
-        $adaMobil = mysqli_stmt_get_result($cekMobil);
-        $mobilDitemukan = mysqli_num_rows($adaMobil) > 0;
+
+        $hasilCek = mysqli_stmt_get_result($cekMobil);
+        $mobilDitemukan = mysqli_num_rows($hasilCek) > 0;
+
         mysqli_stmt_close($cekMobil);
-        if (!$mobilDitemukan) { $error = "Data mobil tidak ditemukan."; }
-        else {
-        $stmt = mysqli_prepare($conn, "
-            DELETE FROM mobil
-            WHERE id_mobil = ?
-        ");
 
-        mysqli_stmt_bind_param($stmt, "s", $idMobil);
-
-        if (mysqli_stmt_execute($stmt)) {
-            header("Location: mobil.php?dihapus=1");
-            exit;
-        } else {
-            $error = "Mobil tidak dapat dihapus. Mungkin data mobil masih digunakan pada transaksi atau reservasi.";
-        }
-
-        mysqli_stmt_close($stmt);
-        }
-    }
-}
-
-// PROSES EDIT MOBIL
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["edit_mobil"])) {
-
-    $idMobil = trim($_POST["id_mobil"] ?? '');
-    $merk = trim($_POST["merk_mobil"] ?? '');
-    $plat = formatPlat($_POST["plat_kendaraan"] ?? '');
-    $seat = formatSeat($_POST["seat_row"] ?? '');
-    $tarifRaw = trim((string)($_POST["tarif_sewa"] ?? ''));
-    $tarif = is_numeric($tarifRaw) ? (float)$tarifRaw : 0;
-    $status = $_POST["status_mobil"] ?? '';
-
-if (!in_array($status, ["Tersedia", "Perawatan"], true)) {
-    $status = false;
-}
-
-if ($idMobil === '' || $merk === "" || mb_strlen($merk) > 30 || $plat === false || strlen($plat) > 10 || $seat === false || $tarifRaw === '' || !is_finite($tarif) || $tarif <= 0 || $tarif > 99999999.99 || $status === false) {
-    $error = "Data belum lengkap atau format input tidak valid.";
-} else {
-
-        $cekIdMobil = mysqli_prepare($conn, "SELECT id_mobil FROM mobil WHERE id_mobil=?");
-        mysqli_stmt_bind_param($cekIdMobil, "s", $idMobil);
-        mysqli_stmt_execute($cekIdMobil);
-        $idMobilResult = mysqli_stmt_get_result($cekIdMobil);
-        $idMobilAda = mysqli_num_rows($idMobilResult) > 0;
-        mysqli_stmt_close($cekIdMobil);
-        if (!$idMobilAda) { $error = "Data mobil tidak ditemukan."; }
-        else {
-        // Status mobil yang masih memiliki transaksi aktif tidak boleh diubah manual.
-        $aktif = mysqli_prepare($conn, "SELECT t.id_transaksi FROM transaksisewa t JOIN reservasi r ON t.id_reservasi=r.id_reservasi LEFT JOIN pengembalian k ON k.id_transaksi=t.id_transaksi WHERE r.id_mobil=? AND k.id_pengembalian IS NULL LIMIT 1");
-        mysqli_stmt_bind_param($aktif, "s", $idMobil);
-        mysqli_stmt_execute($aktif);
-        $aktifResult = mysqli_stmt_get_result($aktif);
-        $sedangDisewa = mysqli_num_rows($aktifResult) > 0;
-        mysqli_stmt_close($aktif);
-        if ($sedangDisewa) {
-            $status = 'Disewa';
-        }
-
-        // Cek nomor polisi milik mobil lain
-        $cekPlat = mysqli_prepare($conn, "
-            SELECT id_mobil FROM mobil
-            WHERE plat_kendaraan = ?
-            AND id_mobil != ?
-        ");
-
-        mysqli_stmt_bind_param($cekPlat, "ss", $plat, $idMobil);
-        mysqli_stmt_execute($cekPlat);
-        $hasilCek = mysqli_stmt_get_result($cekPlat);
-
-        if (mysqli_num_rows($hasilCek) > 0) {
-
-            $error = "Nomor polisi sudah digunakan oleh mobil lain!";
-
+        if (!$mobilDitemukan) {
+            $error = "Data mobil tidak ditemukan.";
         } else {
 
-            $stmt = mysqli_prepare($conn, "
-                UPDATE mobil
-                SET plat_kendaraan = ?,
-                    merk_mobil = ?,
-                    seat_row = ?,
-                    status_mobil = ?,
-                    tarif_sewa = ?
-                WHERE id_mobil = ?
-            ");
-
-            mysqli_stmt_bind_param(
-                $stmt,
-                "ssssds",
-                $plat,
-                $merk,
-                $seat,
-                $status,
-                $tarif,
-                $idMobil
+            // Menghapus mobil
+            $stmt = mysqli_prepare($conn,
+                "DELETE FROM mobil WHERE id_mobil = ?"
             );
 
+            mysqli_stmt_bind_param($stmt, "s", $idMobil);
+
             if (mysqli_stmt_execute($stmt)) {
-                header("Location: mobil.php?diedit=1");
+                header("Location: mobil.php?dihapus=1");
                 exit;
             } else {
-                $error = "Gagal mengubah data mobil.";
+                $error = "Mobil tidak dapat dihapus. Mungkin data mobil masih digunakan pada transaksi atau reservasi.";
             }
-        }
+
+            mysqli_stmt_close($stmt);
         }
     }
 }
+// ==============================
+// PROSES EDIT MOBIL
+// ==============================
+if ($isPost && isset($_POST['edit_mobil'])) {
 
+    $idMobil = trim($_POST['id_mobil'] ?? '');
+    $data = ambilDataMobil($_POST);
 
+    if ($idMobil === '' || $data === false) {
+        $error = "Data belum lengkap atau format input tidak valid.";
+    } else {
+
+        // Memeriksa keberadaan mobil
+        $cekMobil = mysqli_prepare($conn,
+            "SELECT id_mobil FROM mobil WHERE id_mobil = ?"
+        );
+
+        mysqli_stmt_bind_param($cekMobil, "s", $idMobil);
+        mysqli_stmt_execute($cekMobil);
+
+        $hasilCek = mysqli_stmt_get_result($cekMobil);
+        $mobilDitemukan = mysqli_num_rows($hasilCek) > 0;
+
+        mysqli_stmt_close($cekMobil);
+
+        if (!$mobilDitemukan) {
+            $error = "Data mobil tidak ditemukan.";
+        } else {
+
+            // Memeriksa apakah mobil masih disewa
+            $aktif = mysqli_prepare($conn, "
+                SELECT t.id_transaksi
+                FROM transaksisewa t
+                JOIN reservasi r ON t.id_reservasi = r.id_reservasi
+                LEFT JOIN pengembalian k ON k.id_transaksi = t.id_transaksi
+                WHERE r.id_mobil = ?
+                AND k.id_pengembalian IS NULL
+                LIMIT 1
+            ");
+
+            mysqli_stmt_bind_param($aktif, "s", $idMobil);
+            mysqli_stmt_execute($aktif);
+
+            $hasilAktif = mysqli_stmt_get_result($aktif);
+            $sedangDisewa = mysqli_num_rows($hasilAktif) > 0;
+
+            mysqli_stmt_close($aktif);
+
+            // Jika masih disewa, status tidak boleh diubah manual
+            if ($sedangDisewa) {
+                $data['status'] = 'Disewa';
+            }
+
+            // Memeriksa nomor polisi mobil lain
+            $cekPlat = mysqli_prepare($conn, "
+                SELECT id_mobil
+                FROM mobil
+                WHERE plat_kendaraan = ?
+                AND id_mobil != ?
+            ");
+
+            mysqli_stmt_bind_param($cekPlat, "ss", $data['plat'], $idMobil);
+            mysqli_stmt_execute($cekPlat);
+
+            $hasilCek = mysqli_stmt_get_result($cekPlat);
+            $platTerdaftar = mysqli_num_rows($hasilCek) > 0;
+
+            mysqli_stmt_close($cekPlat);
+
+            if ($platTerdaftar) {
+                $error = "Nomor polisi sudah digunakan oleh mobil lain!";
+            } else {
+
+                // Memperbarui data mobil
+                $stmt = mysqli_prepare($conn, "
+                    UPDATE mobil
+                    SET plat_kendaraan = ?,
+                        merk_mobil = ?,
+                        seat_row = ?,
+                        status_mobil = ?,
+                        tarif_sewa = ?
+                    WHERE id_mobil = ?
+                ");
+
+                mysqli_stmt_bind_param(
+                    $stmt,
+                    "ssssds",
+                    $data['plat'],
+                    $data['merk'],
+                    $data['seat'],
+                    $data['status'],
+                    $data['tarif'],
+                    $idMobil
+                );
+
+                if (mysqli_stmt_execute($stmt)) {
+                    header("Location: mobil.php?diedit=1");
+                    exit;
+                } else {
+                    $error = "Gagal mengubah data mobil.";
+                }
+
+                mysqli_stmt_close($stmt);
+            }
+        }
+    }
+}
+// ==============================
 // PESAN BERHASIL
-if (isset($_GET["berhasil"])) {
+// ==============================
+if (isset($_GET['berhasil'])) {
     $pesan = "Data mobil berhasil ditambahkan!";
 }
 
-if (isset($_GET["diedit"])) {
+if (isset($_GET['diedit'])) {
     $pesan = "Data mobil berhasil diperbarui!";
 }
 
-if (isset($_GET["dihapus"])) {
+if (isset($_GET['dihapus'])) {
     $pesan = "Data mobil berhasil dihapus!";
 }
-
-
-// AMBIL DATA MOBIL DARI DATABASE
-$result = mysqli_query($conn, "SELECT * FROM mobil ORDER BY id_mobil ASC");
-
+// ==============================
+// MENGAMBIL DATA MOBIL
+// ==============================
+$result = mysqli_query($conn,
+    "SELECT * FROM mobil ORDER BY id_mobil ASC"
+);
 if (!$result) {
     die("Gagal mengambil data mobil: " . mysqli_error($conn));
 }
-
 $totalMobil = mysqli_num_rows($result);
 $dataMobil = [];
 $totalTersedia = 0;
 $totalDisewa = 0;
-
 while ($row = mysqli_fetch_assoc($result)) {
-
     $dataMobil[] = $row;
-
-    $status = strtolower(trim($row["status_mobil"]));
-
-    if ($status === "tersedia") {
+    $status = strtolower(trim($row['status_mobil']));
+    if ($status === 'tersedia') {
         $totalTersedia++;
-    } elseif ($status === "disewa") {
+    } elseif ($status === 'disewa') {
         $totalDisewa++;
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="id">
@@ -279,7 +343,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="style.css">
@@ -353,10 +417,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <p>Kelola informasi kendaraan ONE RENT.</p>
             </div>
 
-            <div class="topbar-right">
-                <span class="date" id="currentDate"></span>
-                <div class="avatar"><?= e(strtoupper(substr($_SESSION["nama_admin"] ?? "A", 0, 1))) ?></div>
-            </div>
         </header>
 
         <section class="content">
@@ -805,225 +865,6 @@ while ($row = mysqli_fetch_assoc($result)) {
     </main>
 </div>
 
-<script>
-
-
-// NOTIFIKASI
-function closeAlert(alert) {
-    if (!alert || !alert.parentElement) return;
-
-    alert.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-    alert.style.opacity = "0";
-    alert.style.transform = "translateY(-8px)";
-
-    setTimeout(function() {
-        alert.remove();
-    }, 300);
-}
-
-// Notifikasi hilang otomatis setelah 3 detik
-document.querySelectorAll(".alert-message").forEach(function(alert) {
-    setTimeout(function() {
-        closeAlert(alert);
-    }, 3000);
-});
-
-
-    // Tanggal
-    const dateElement = document.getElementById("currentDate");
-
-    if (dateElement) {
-        dateElement.textContent = new Date().toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "long",
-            year: "numeric"
-        });
-    }
-
-    // Sidebar
-    function toggleSidebar() {
-        document.getElementById("sidebar").classList.toggle("show");
-    }
-
-    // Form tambah mobil
-    const openForm = document.getElementById("openForm");
-    const closeForm = document.getElementById("closeForm");
-    const cancelForm = document.getElementById("cancelForm");
-    const formPanel = document.getElementById("carFormPanel");
-
-    openForm.addEventListener("click", function() {
-        formPanel.classList.add("show");
-        formPanel.scrollIntoView({ behavior: "smooth" });
-    });
-
-    function hideForm() {
-        formPanel.classList.remove("show");
-    }
-
-    closeForm.addEventListener("click", hideForm);
-    cancelForm.addEventListener("click", hideForm);
-
-    // Pencarian dan filter status
-    const searchCar = document.getElementById("searchCar");
-    const filterStatus = document.getElementById("filterStatus");
-    const tableBody = document.getElementById("carTableBody");
-    const tableNote = document.getElementById("tableNote");
-
-    function filterCars() {
-        const keyword = searchCar.value.toLowerCase();
-        const status = filterStatus.value.toLowerCase();
-
-        const rows = tableBody.querySelectorAll("tr");
-        let jumlah = 0;
-
-        rows.forEach(function(row) {
-            if (!row.dataset.status) return;
-
-            const text = row.textContent.toLowerCase();
-            const rowStatus = row.dataset.status.toLowerCase();
-
-            const cocokKeyword = text.includes(keyword);
-            const cocokStatus = status === "" || rowStatus === status;
-
-            if (cocokKeyword && cocokStatus) {
-                row.style.display = "";
-                jumlah++;
-            } else {
-                row.style.display = "none";
-            }
-        });
-
-        tableNote.textContent = "Menampilkan " + jumlah + " kendaraan.";
-    }
-
-    searchCar.addEventListener("input", filterCars);
-    filterStatus.addEventListener("change", filterCars);
-
-
-// POPUP DETAIL MOBIL
-const detailModal = document.getElementById("detailModal");
-const closeDetail = document.getElementById("closeDetail");
-const closeDetailBottom = document.getElementById("closeDetailBottom");
-
-document.querySelectorAll(".detail-btn").forEach(function(button) {
-
-    button.addEventListener("click", function() {
-
-        document.getElementById("detailId").textContent = this.dataset.id;
-        document.getElementById("detailMerk").textContent = this.dataset.merk;
-        document.getElementById("detailPlat").textContent = this.dataset.plat;
-        document.getElementById("detailSeat").textContent = this.dataset.seat;
-
-        document.getElementById("detailTarif").textContent =
-            "Rp" + Number(this.dataset.tarif).toLocaleString("id-ID");
-
-        document.getElementById("detailStatus").textContent = this.dataset.status;
-
-        detailModal.classList.add("show");
-        document.body.style.overflow = "hidden";
-
-    });
-
-});
-
-function hideDetailModal() {
-    detailModal.classList.remove("show");
-    document.body.style.overflow = "";
-}
-
-closeDetail.addEventListener("click", hideDetailModal);
-closeDetailBottom.addEventListener("click", hideDetailModal);
-
-detailModal.addEventListener("click", function(event) {
-    if (event.target === detailModal) {
-        hideDetailModal();
-    }
-});
-
-// POPUP EDIT MOBIL
-const editFormPanel = document.getElementById("editFormPanel");
-const closeEditForm = document.getElementById("closeEditForm");
-const cancelEditForm = document.getElementById("cancelEditForm");
-
-// Klik tombol edit pada tabel
-document.querySelectorAll(".edit-btn").forEach(function(button) {
-
-    button.addEventListener("click", function() {
-
-        // Ambil data dari tombol yang diklik
-        document.getElementById("editId").value = this.dataset.id;
-        document.getElementById("editMerk").value = this.dataset.merk;
-        document.getElementById("editPlat").value = this.dataset.plat;
-        document.getElementById("editSeat").value = this.dataset.seat;
-        document.getElementById("editTarif").value = this.dataset.tarif;
-        document.getElementById("editStatus").value = this.dataset.status;
-
-        // Tampilkan popup
-        editFormPanel.classList.add("show");
-        document.body.style.overflow = "hidden";
-    });
-
-});
-
-// Tutup popup
-function hideEditForm() {
-    editFormPanel.classList.remove("show");
-    document.body.style.overflow = "";
-}
-
-closeEditForm.addEventListener("click", hideEditForm);
-cancelEditForm.addEventListener("click", hideEditForm);
-
-// Klik area luar popup
-editFormPanel.addEventListener("click", function(event) {
-    if (event.target === editFormPanel) {
-        hideEditForm();
-    }
-});
-
-
-// POPUP HAPUS MOBIL
-const deleteModal = document.getElementById("deleteModal");
-const cancelDelete = document.getElementById("cancelDelete");
-
-const deleteCarId = document.getElementById("deleteCarId");
-const deleteCarName = document.getElementById("deleteCarName");
-const deleteCarPlate = document.getElementById("deleteCarPlate");
-
-// Klik tombol hapus
-document.querySelectorAll(".delete-btn").forEach(function(button) {
-
-    button.addEventListener("click", function() {
-
-        deleteCarId.value = this.dataset.id;
-        deleteCarName.textContent = this.dataset.merk;
-        deleteCarPlate.textContent = this.dataset.plat;
-
-        deleteModal.classList.add("show");
-        document.body.style.overflow = "hidden";
-
-    });
-
-});
-
-// Tutup popup
-function hideDeleteModal() {
-    deleteModal.classList.remove("show");
-    document.body.style.overflow = "";
-}
-
-cancelDelete.addEventListener("click", hideDeleteModal);
-
-// Klik area luar popup
-deleteModal.addEventListener("click", function(event) {
-    if (event.target === deleteModal) {
-        hideDeleteModal();
-    }
-});
-
-    // Ikon
-    lucide.createIcons();
-</script>
-
+<script src="script.js"></script>
 </body>
 </html>

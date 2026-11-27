@@ -1,3 +1,4 @@
+/* STYLESHEET UTAMA ONE RENT: variabel tema, layout dashboard, komponen modul, modal, tabel, dan aturan responsif. */
 
 :root {
     --white: #FFFFFF;
@@ -21,7 +22,7 @@
 }
 
 body {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Outfit', sans-serif;
     background: var(--background);
     color: var(--text);
 }
@@ -495,8 +496,9 @@ td {
 }
 
 .success {
-    background: rgba(249, 177, 122, 0.15);
-    color: var(--peach);
+    background: rgba(85, 184, 137, 0.15);
+    color: #55B889;
+    border: 1px solid rgba(85, 184, 137, 0.25);
 }
 
 .warning {
@@ -604,6 +606,7 @@ footer {
 }
 
 
+/* OVERRIDE TIPOGRAFI: penyelarasan ukuran dan warna teks pada tema ONE RENT. */
 /* TYPOGRAPHY - ONE RENT */
 
 body {
@@ -738,10 +741,10 @@ footer {
 }
 
 
+/* BAGIAN KOMPONEN TAMBAHAN: aturan khusus halaman/modul yang melengkapi gaya dashboard di atas. */
 /* =========================
    DATA MOBIL - ONE RENT
 ========================= */
-
 .data-intro {
     display: flex;
     justify-content: space-between;
@@ -1877,3 +1880,15 @@ footer {
     }
 }
 
+
+
+/* =========================================================
+   FONT GLOBAL ONE RENT
+   Menyatukan jenis huruf di seluruh halaman dan komponen.
+   Font utama aplikasi: Outfit.
+========================================================= */
+html,
+body,
+body * {
+    font-family: 'Outfit', sans-serif !important;
+}

@@ -1,2 +1,4 @@
+# KONFIGURASI GIT: aturan normalisasi akhir baris dan perlakuan file oleh Git.
+
 # Auto detect text files and perform LF normalization
 * text=auto

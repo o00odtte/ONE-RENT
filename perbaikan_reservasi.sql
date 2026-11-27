@@ -1,3 +1,5 @@
+-- PATCH DATABASE RESERVASI: perbaikan trigger dan sinkronisasi status mobil berdasarkan transaksi aktif.
+
 -- Jalankan SATU KALI pada database mbdminiproject yang sudah ada.
 -- Menghapus trigger lama yang keliru mengubah status mobil menjadi Disewa
 -- segera setelah reservasi dibuat.

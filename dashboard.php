@@ -1,4 +1,5 @@
 <?php
+// DASHBOARD: menyiapkan ringkasan jumlah data dan kartu navigasi utama ONE RENT.
 require_once 'module_helper.php';
 
 function totalDataDashboard($conn, $table) {

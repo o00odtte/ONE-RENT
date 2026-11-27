@@ -1,5 +1,6 @@
-
 <?php
+// KONEKSI DATABASE: konfigurasi server MySQL dan pembuatan koneksi mysqli untuk aplikasi.
+
 $host = "localhost";
 $username = "root";
 $password = "626824namu";
